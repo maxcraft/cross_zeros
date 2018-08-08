@@ -6,7 +6,7 @@ The build process looks simle
 
 So there is no Makefile so far. But it's in a plan.
 
-TODO:
+###TODO:
 * seeding random
 * Makefile
 * ncurses UI
