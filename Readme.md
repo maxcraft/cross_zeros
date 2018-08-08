@@ -4,11 +4,9 @@ The build process looks simle
 
 ```gcc -O2 -o cross_zeros main.c game.c field.c```
 
-So there is no Makefile so far. But it's in a plan.
 
 ### TODO:
 * seeding random
-* Makefile
 * ncurses UI
 * change difficulties without leaving the program
 
