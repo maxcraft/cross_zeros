@@ -9,10 +9,36 @@
 #include "include/ui.h"
 #include "include/ui_old.h"
 
+#include <sys/random.h>
+
 #define NOOB_STRING "noob"
 #define EASY_STRING "easy"
 #define NORMAL_STRING "normal"
 #define HARD_STRING "hard"
+
+static enum game_difficulty parse_difficulty( const char *optarg )
+{
+	enum game_difficulty difficulty = GAME_DIFFICULTY_INVALID;
+
+	if( 0 == strcasecmp( NOOB_STRING, optarg ) )
+	{
+		difficulty = GAME_DIFFICULTY_NOOB;
+	}
+	else if( 0 == strcasecmp( EASY_STRING, optarg ) )
+	{
+		difficulty = GAME_DIFFICULTY_EASY;
+	}
+	else if( 0 == strcasecmp( NORMAL_STRING, optarg ) )
+	{
+		difficulty = GAME_DIFFICULTY_NORMAL;
+	}
+	else if( 0 == strcasecmp( HARD_STRING, optarg ) )
+	{
+		difficulty = GAME_DIFFICULTY_HARD;
+	}
+
+	return difficulty;
+}
 
 static void print_usage()
 {
@@ -38,25 +64,10 @@ int main( int argc, char** argv )
 		switch( c )
 		{
 			case 'd':
-				if( 0 == strcasecmp( NOOB_STRING, optarg ) )
-				{
-					difficulty = GAME_DIFFICULTY_NOOB;
-				}
-				else if( 0 == strcasecmp( EASY_STRING, optarg ) )
-				{
-					difficulty = GAME_DIFFICULTY_EASY;
-				}
-				else if( 0 == strcasecmp( NORMAL_STRING, optarg ) )
-				{
-					difficulty = GAME_DIFFICULTY_NORMAL;
-				}
-				else if( 0 == strcasecmp( HARD_STRING, optarg ) )
-				{
-					difficulty = GAME_DIFFICULTY_HARD;
-				}
-				else
+				if( GAME_DIFFICULTY_INVALID == ( difficulty = parse_difficulty( optarg ) ) )
 				{
 					printf( "Unknown difficulty '%s'\n", optarg );
+					print_usage();
 				}
 				break;
 
@@ -66,6 +77,16 @@ int main( int argc, char** argv )
 		}
 	}
 
+	int rnd_seed = 0;
+
+	ssize_t rnd_count;
+
+	do
+	{
+		rnd_count = getrandom( &rnd_seed, sizeof( rnd_seed ), 0 );
+	} while( rnd_count < 1 );
+
+	srandom( rnd_seed );
 	ui_t *ui = &ui_old;
 	game_t *game = game_create();
 	game_init( game, difficulty );
