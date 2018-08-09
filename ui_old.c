@@ -3,7 +3,7 @@
 #include "include/ui_old.h"
 #include "include/color.h"
 
-static inline void print_cell_term( enum cell_status status, int cell_index )
+static inline void print_cell_term( ui_t *ui, enum cell_status status, int cell_index )
 {
 	switch( status )
 	{
@@ -22,7 +22,7 @@ static inline void print_cell_term( enum cell_status status, int cell_index )
 
 }
 
-static void print_field_term( game_t *game )
+static void print_field_term( ui_t *ui, game_t *game )
 {
 	field_t *field = game_get_field( game );
 
@@ -34,13 +34,13 @@ static void print_field_term( game_t *game )
 		}
 
 		enum cell_status status = field_get_cell_status( field, i );
-		print_cell_term( status, i );
+		print_cell_term( ui, status, i );
 	}
 
 	printf("\n" );
 }
 
-static void print_winner_term( enum cell_status winner )
+static void print_winner_term( ui_t *ui, enum cell_status winner )
 {
 	puts( BG_BRIGHT_RED "Game is over!" RESET_COLOR );
 
@@ -61,17 +61,17 @@ static void print_winner_term( enum cell_status winner )
 	}
 }
 
-static void print_legend_term()
+static void print_legend_term( ui_t *ui )
 {
-	print_cell_term( CELL_USER, 0 );
+	print_cell_term( ui, CELL_USER, 0 );
 	puts( " - player" );
-	print_cell_term( CELL_CPU, 0 );
+	print_cell_term( ui, CELL_CPU, 0 );
 	puts( " - cpu" );
-	print_cell_term( CELL_EMPTY, 0 );
+	print_cell_term( ui, CELL_EMPTY, 0 );
 	puts( " - empty cell" );
 }
 
-static int read_cell_index_term()
+static int read_cell_index_term( ui_t *ui )
 {
 	int index = 0;
 	puts( "Input cell index: " );
@@ -94,7 +94,7 @@ static int read_cell_index_term()
 	return index;
 }
 
-static char read_play_again_term()
+static char read_play_again_term( ui_t *ui )
 {
 	char answer;
 	printf( "Play again [y/n]? " );
@@ -116,12 +116,19 @@ static char read_play_again_term()
 	return answer;
 }
 
-static void print_invalid_index_term( uint8_t index )
+static void print_invalid_index_term( ui_t *ui, uint8_t index )
 {
 	printf("Invalid cell index " BRIGHT_WHITE "%d" RESET_COLOR "\n", index );
 }
 
+static void nop( ui_t *ui )
+{
+	// do nothing.
+}
+
 static ui_vtable_t ui_vtable_old = {
+	.init = nop, // the system handles initialization for us
+	.stop = nop, // the system handles deinitialization for us
   .print_field = print_field_term,
   .print_winner = print_winner_term,
   .print_legend = print_legend_term,

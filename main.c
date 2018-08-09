@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <strings.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "include/color.h"
 #include "include/field.h"
@@ -15,6 +16,22 @@
 #define EASY_STRING "easy"
 #define NORMAL_STRING "normal"
 #define HARD_STRING "hard"
+
+static ui_t *ui;
+
+static void sig_handler( int signal )
+{
+	switch( signal )
+	{
+		case SIGINT:
+			ui->vtable->stop( ui );
+			exit( 0 );
+			break;
+
+		default:
+			return;
+	}
+}
 
 static enum game_difficulty parse_difficulty( const char *optarg )
 {
@@ -87,40 +104,45 @@ int main( int argc, char** argv )
 	} while( rnd_count < 1 );
 
 	srandom( rnd_seed );
-	ui_t *ui = &ui_old;
+	ui = &ui_old;
+
+	ui->vtable->init( ui );
+
+	signal( SIGINT, sig_handler );
+
 	game_t *game = game_create();
 	game_init( game, difficulty );
 
-	ui->vtable->print_field( game );
+	ui->vtable->print_field( ui, game );
 	char answer;
 	enum cell_status winner = CELL_INVALID;
 
 	do {
-		ui->vtable->print_legend();
+		ui->vtable->print_legend( ui );
 		while( !game_is_over( game, &winner ) )
 		{
 			// puts( "Game is not over\n" );
 
 			if( game_is_user_move( game ) && !game_is_over( game, &winner ) )
 			{
-				ui->vtable->print_field( game );
+				ui->vtable->print_field( ui, game );
 
-				int index = ui->vtable->read_cell_index();
+				int index = ui->vtable->read_cell_index( ui );
 
 
 				if( !game_user_move( game, index ) )
 				{
-					ui->vtable->print_invalid_index( index );
+					ui->vtable->print_invalid_index( ui, index );
 				}
 				// print_field( game );
 			}
 		}
 
-		ui->vtable->print_winner( winner );
+		ui->vtable->print_winner( ui, winner );
 
-		ui->vtable->print_field( game );
+		ui->vtable->print_field( ui, game );
 
-		answer = ui->vtable->read_play_again();
+		answer = ui->vtable->read_play_again( ui );
 
 		game_restart( game );
 	} while( answer != 'n');
