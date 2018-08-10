@@ -6,6 +6,7 @@
 #define COLOR_INDEX_CPU 3
 #define COLOR_INDEX_EMPHASIZE 4
 #define COLOR_INDEX_ERROR 5
+#define COLOR_INDEX_ERROR_BORDER 6
 
 #define FIELD_LENGTH 7
 
@@ -16,6 +17,7 @@ typedef struct ui_ncurses
 	WINDOW *field;
 	WINDOW *end_game_banner;
 	WINDOW *prompt;
+	bool error_mode;
 }ui_ncurses_t;
 
 static inline void print_cell( WINDOW *win, enum cell_status status, int cell_index )
@@ -143,10 +145,14 @@ static int read_cell_index( ui_t *in_ui )
 {
 	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
 
-	wclear( ui->prompt );
-	box( ui->prompt, 0, 0 );
-	mvwprintw( ui->prompt, 1, 1, "Input cell index: " );
-	wrefresh( ui->prompt );
+	if( !ui->error_mode )
+	{
+		wclear( ui->prompt );
+		box( ui->prompt, 0, 0 );
+		mvwprintw( ui->prompt, 1, 1, "Input cell index: " );
+		wrefresh( ui->prompt );
+	}
+
 	int s = 0;
 
 	do
@@ -154,6 +160,8 @@ static int read_cell_index( ui_t *in_ui )
 		s = getch();
 
 	}while( '0' > s && '8' < s );
+
+	ui->error_mode = false;
 
 	return s - '0';
 }
@@ -180,9 +188,14 @@ static char read_play_again( ui_t *in_ui )
 static void print_invalid_index( ui_t *in_ui, uint8_t index )
 {
 	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
+	ui->error_mode = true;
 
 	wclear( ui->prompt );
+
+	wattron( ui->prompt, COLOR_PAIR( COLOR_INDEX_ERROR_BORDER ) );
 	box( ui->prompt, 0, 0 );
+	wattroff( ui->prompt, COLOR_PAIR( COLOR_INDEX_ERROR_BORDER ) );
+
 	wattron( ui->prompt, COLOR_PAIR( COLOR_INDEX_ERROR ) );
 	mvwprintw(ui->prompt, 1, 1, "Invalid cell index " );
 	wattron( ui->prompt, A_BOLD );
@@ -209,6 +222,7 @@ static void init( ui_t *in_ui )
 		init_pair( COLOR_INDEX_CPU, COLOR_BLACK, COLOR_GREEN );
 		init_pair( COLOR_INDEX_EMPHASIZE, COLOR_WHITE, COLOR_BLACK );
 		init_pair( COLOR_INDEX_ERROR, COLOR_WHITE, COLOR_RED );
+		init_pair( COLOR_INDEX_ERROR_BORDER, COLOR_RED, COLOR_BLACK );
 	}
 
 	int maxx, maxy;
@@ -248,5 +262,6 @@ ui_ncurses_t ui_ncurses = { .base = { .vtable = &ui_vtable_ncurses },
                             .legend = NULL,
                             .field = NULL,
                             .end_game_banner = NULL,
-                            .prompt = NULL };
+                            .prompt = NULL,
+                            .error_mode = false };
 
