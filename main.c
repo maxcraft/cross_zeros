@@ -11,7 +11,18 @@
 #include "include/ui_old.h"
 #include "include/ui_ncurses.h"
 
-#include <sys/random.h>
+#if defined __GLIBC__ && defined __linux__
+# if __GLIBC__ > 2 || __GLIBC_MINOR__ > 24
+#  include <sys/random.h>
+# else
+# include <sys/syscall.h>
+# include <linux/random.h>
+# define getrandom( buf, buf_len, flags ) syscall( SYS_getrandom, buf, buf_len, flags )
+# endif
+#else
+# include <sys/random.h>
+#endif
+
 #include <getopt.h>
 
 #define NOOB_STRING "noob"
@@ -239,6 +250,7 @@ int main( int argc, char** argv )
 		game_restart( game );
 	} while( answer != 'n');
 
+	ui->vtable->stop( ui );
 	game_destroy( game );
 	return 0;
 }
