@@ -10,7 +10,7 @@ PROG_NAME = cross_zeros
 #	${CC} ${CFLAGS} -o $$
 
 $(PROG_NAME):$(OBJECTS)
-	$(CC) $(LDFLAGS) -o $(PROG_NAME) $^
+	$(CC) -o $(PROG_NAME) $^ $(LDFLAGS)
 
 all: $(PROG_NAME)
 

@@ -9,13 +9,21 @@
 #include "include/game.h"
 #include "include/ui.h"
 #include "include/ui_old.h"
+#include "include/ui_ncurses.h"
 
 #include <sys/random.h>
+#include <getopt.h>
 
 #define NOOB_STRING "noob"
 #define EASY_STRING "easy"
 #define NORMAL_STRING "normal"
 #define HARD_STRING "hard"
+
+#define UI_NAME_OLD "old"
+#define UI_NAME_NCURSES "ncurses"
+
+#define OPTION_UI_OLD 0x100
+#define OPTION_UI_NCURSES 0x101
 
 static ui_t *ui;
 
@@ -62,21 +70,95 @@ static void print_usage()
 	puts( "Usage:" );
 	puts( "cross_zeros [options] " );
 	puts( "Where " BRIGHT_WHITE "options" RESET_COLOR " are:" );
-	puts( "\t-d " BRIGHT_WHITE "DIFFICULTY" RESET_COLOR "\tsets one of the difficulty levels:" );
+	puts( "\t-d  " BRIGHT_WHITE "DIFFICULTY" RESET_COLOR ",\tsets one of the difficulty levels:" );
+	puts( "\t--difficulty=" BRIGHT_WHITE "DIFFICULTY" RESET_COLOR );
 	puts( "\t\t\t\t" BRIGHT_WHITE NOOB_STRING RESET_COLOR );
 	puts( "\t\t\t\t" BRIGHT_WHITE EASY_STRING RESET_COLOR );
 	puts( "\t\t\t\t" BRIGHT_WHITE NORMAL_STRING RESET_COLOR );
 	puts( "\t\t\t\t" BRIGHT_WHITE HARD_STRING RESET_COLOR );
-	puts( "\t-h\t\tprints this usage.");
+	puts( "\t--" NOOB_STRING "\t\tthe same as " BRIGHT_WHITE "-d " NOOB_STRING RESET_COLOR);
+	puts( "\t--" EASY_STRING "\t\tthe same as " BRIGHT_WHITE "-d " EASY_STRING RESET_COLOR );
+	puts( "\t--" NORMAL_STRING "\tthe same as " BRIGHT_WHITE "-d " NORMAL_STRING RESET_COLOR );
+	puts( "\t--" HARD_STRING "\t\tthe same as " BRIGHT_WHITE "-d " HARD_STRING RESET_COLOR );
+
+	puts( "\t-i " BRIGHT_WHITE "INTERFACE" RESET_COLOR ",\tspecify one of the interfaces:" );
+	puts( "\t--ui=" BRIGHT_WHITE "INTERFACE" RESET_COLOR );
+	puts( "\t\t\t\t" BRIGHT_WHITE UI_NAME_OLD RESET_COLOR );
+	puts( "\t\t\t\t" BRIGHT_WHITE UI_NAME_NCURSES RESET_COLOR );
+	puts( "\t--" UI_NAME_OLD );
+	puts( "\t--" UI_NAME_NCURSES );
+
+	puts( "\t-h,\t\tprints this usage.");
+	puts( "\t--help" );
 	exit( 0 );
 }
 
+static enum game_difficulty difficulty = GAME_DIFFICULTY_HARD;
+
+static const struct option longopts[] = {
+	{
+		.name = "difficulty",
+		.has_arg = required_argument,
+		.flag = NULL,
+		.val = 'd'
+	},
+	{
+		.name = NOOB_STRING,
+		.has_arg = no_argument,
+		.flag = &difficulty,
+		.val = GAME_DIFFICULTY_NOOB
+	},
+	{
+		.name = EASY_STRING,
+		.has_arg = no_argument,
+		.flag = &difficulty,
+		.val = GAME_DIFFICULTY_EASY
+	},
+	{
+		.name = NORMAL_STRING,
+		.has_arg = no_argument,
+		.flag = &difficulty,
+		.val = GAME_DIFFICULTY_NORMAL
+	},
+	{
+		.name = HARD_STRING,
+		.has_arg = no_argument,
+		.flag = &difficulty,
+		.val = GAME_DIFFICULTY_HARD
+	},
+	{
+		.name = "ui",
+		.has_arg = required_argument,
+		.flag = NULL,
+		.val = 'i'
+	},
+	{
+		.name = UI_NAME_OLD,
+		.has_arg = no_argument,
+		.flag = NULL,
+		.val = OPTION_UI_OLD
+	},
+	{
+		.name = UI_NAME_NCURSES,
+		.has_arg = no_argument,
+		.flag = NULL,
+		.val = OPTION_UI_NCURSES
+	},
+	{
+		.name = "help",
+		.has_arg = no_argument,
+		.flag = NULL,
+		.val = 'h'
+	},
+	{0}
+};
+
 int main( int argc, char** argv )
 {
-	enum game_difficulty difficulty = GAME_DIFFICULTY_HARD;
+	ui = &ui_old;
 
-	int c;
-	while( -1 != ( c = getopt( argc, argv, "hd:" ) ) )
+	int c, opt_ind;
+	while( -1 != ( c = getopt_long( argc, argv, "hd:", longopts, &opt_ind ) ) )
 	{
 		switch( c )
 		{
@@ -86,6 +168,17 @@ int main( int argc, char** argv )
 					printf( "Unknown difficulty '%s'\n", optarg );
 					print_usage();
 				}
+				break;
+
+			case OPTION_UI_OLD:
+				ui = &ui_old;
+				break;
+
+			case OPTION_UI_NCURSES:
+				ui = &ui_ncurses;
+				break;
+
+			case 0:
 				break;
 
 			case 'h':
@@ -104,7 +197,6 @@ int main( int argc, char** argv )
 	} while( rnd_count < 1 );
 
 	srandom( rnd_seed );
-	ui = &ui_old;
 
 	ui->vtable->init( ui );
 
