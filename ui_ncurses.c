@@ -18,6 +18,7 @@ typedef struct ui_ncurses
 	WINDOW *end_game_banner;
 	WINDOW *prompt;
 	bool error_mode;
+	const char *status;
 }ui_ncurses_t;
 
 static inline void print_cell( WINDOW *win, enum cell_status status, int cell_index )
@@ -141,23 +142,68 @@ static void print_legend( ui_t *in_ui )
 	wrefresh( ui->legend );
 }
 
-static int read_cell_index( ui_t *in_ui )
-{
-	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
+static const char *select_cell_status = "Input cell index: ";
+static const char *play_again_status = "Play again [y/n]? "; 
 
+static void print_status( ui_ncurses_t *ui )
+{
 	if( !ui->error_mode )
 	{
 		wclear( ui->prompt );
 		box( ui->prompt, 0, 0 );
-		mvwprintw( ui->prompt, 1, 1, "Input cell index: " );
+		mvwprintw( ui->prompt, 1, 1, ui->status );
 		wrefresh( ui->prompt );
 	}
+}
+
+static void resize_windows( ui_ncurses_t *ui )
+{
+	int maxx, maxy;
+	getmaxyx( stdscr, maxy, maxx );
+
+	clear();
+
+	wresize( ui->legend, 5, maxx );
+	wresize( ui->field, FIELD_LENGTH, FIELD_LENGTH );
+
+	mvwin( ui->field, 6, ( maxx - FIELD_LENGTH ) / 2 );
+
+	wresize( ui->prompt, 3, maxx );
+	mvwin( ui->prompt, maxy - 3, 0 );
+
+	refresh();
+
+	wclear( ui->legend );
+	box( ui->legend, 0, 0 );
+	ui->base.vtable->print_legend( &ui->base );
+
+	//ui->base.vtable->print_field( ui->base );
+	wrefresh( ui->field );
+
+	ui->error_mode = false;
+	//wrefresh( ui->prompt );
+	print_status( ui );
+
+	refresh();
+}
+
+static int read_cell_index( ui_t *in_ui )
+{
+	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
+
+	ui->status = select_cell_status;
+	print_status( ui );
 
 	int s = 0;
 
 	do
 	{
 		s = getch();
+		
+		if( KEY_RESIZE == s )
+		{
+			resize_windows( ui );
+		}
 
 	}while( '0' > s && '8' < s );
 
@@ -170,17 +216,21 @@ static char read_play_again( ui_t *in_ui )
 {
 	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
 
-	wclear( ui->prompt );
-	box( ui->prompt, 0, 0 );
-	mvwprintw( ui->prompt, 1, 1, "Play again [y/n]? " );
-	wrefresh( ui->prompt );
+	ui->status = play_again_status;
+	print_status( ui );
+
 	int s = 0;
 
 	do
 	{
 		s = getch();
-	}
-	while( 'y' != s && 'n' != s );
+			
+		if( KEY_RESIZE == s )
+		{
+			resize_windows( ui );
+		}
+
+	} while( 'y' != s && 'n' != s );
 
 	return s;
 }
@@ -263,5 +313,6 @@ ui_ncurses_t ui_ncurses = { .base = { .vtable = &ui_vtable_ncurses },
                             .field = NULL,
                             .end_game_banner = NULL,
                             .prompt = NULL,
-                            .error_mode = false };
+                            .error_mode = false,
+                            .status = NULL };
 
