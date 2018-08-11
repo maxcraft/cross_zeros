@@ -6,10 +6,11 @@ The build process looks simple
 
 There is no need in more complex tools for now.
 
-```make clean ```
+```make clean```
 
 The command above will remove all artefacts generated during compilation process.
 
 ### TODO:
-* ncurses UI
-* change difficulties without leaving the program
+* change difficulties without leaving the program.
+* use arrow keys in ncurses mode.
+* add ability to exit game and change mode during the game.

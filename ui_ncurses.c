@@ -7,8 +7,14 @@
 #define COLOR_INDEX_EMPHASIZE 4
 #define COLOR_INDEX_ERROR 5
 #define COLOR_INDEX_ERROR_BORDER 6
+#define COLOR_INDEX_GAMOVER 7
+#define COLOR_INDEX_CPU_WON 9
+#define COLOR_INDEX_PLAYER_WON 10
 
 #define FIELD_LENGTH 7
+
+const static int end_game_banner_width = 20, end_game_banner_height = 3;
+
 
 typedef struct ui_ncurses
 {
@@ -33,9 +39,9 @@ static inline void print_cell( WINDOW *win, enum cell_status status, int cell_in
 
 		case CELL_USER:
 			wattron( win, COLOR_PAIR( COLOR_INDEX_USER ) );
-			wattron( win, A_UNDERLINE );
+			// wattron( win, A_UNDERLINE );
 			wprintw( win, "O" );
-			wattroff( win, A_UNDERLINE );
+			// wattroff( win, A_UNDERLINE );
 			wattroff( win, COLOR_PAIR( COLOR_INDEX_USER ) );
 			break;
 
@@ -67,7 +73,7 @@ static void print_central_grid( WINDOW *win, int y )
 static void print_field( ui_t *in_ui, game_t *game )
 {
 	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
-	
+
 	field_t *field = game_get_field( game );
 
 	box( ui->field, 0, 0 );
@@ -91,33 +97,76 @@ static void print_field( ui_t *in_ui, game_t *game )
 	}
 
 	wrefresh( ui->field );
+
+	if( ui->end_game_banner )
+	{
+		redrawwin( ui->end_game_banner );
+		wrefresh( ui->end_game_banner );
+	}
+}
+
+static void print_middle_window( WINDOW *win, int y, const char *text, size_t len, int color_index )
+{
+	int maxx, maxy;
+	getmaxyx( win, maxy, maxx );
+	int x = ( maxx - len ) / 2;
+
+	wattron( win, COLOR_PAIR( color_index ) );
+	mvwprintw( win, y, x, text );
+	wattroff( win, COLOR_PAIR( color_index ) );
 }
 
 static void print_winner( ui_t *in_ui, enum cell_status winner )
 {
 	ui_ncurses_t *ui = ( ui_ncurses_t * )in_ui;
 
-	move( 15, 0 );
+	int maxx, maxy;
+	getmaxyx( stdscr, maxy, maxx );
 
-	printw( /*BG_BRIGHT_RED*/ "Game is over!"/* RESET_COLOR*/ );
+	if( !ui->end_game_banner )
+	{
+		ui->end_game_banner = newwin( end_game_banner_height, end_game_banner_width,
+			 ( maxy - end_game_banner_height ) / 2,
+			 ( maxx - end_game_banner_width ) / 2 );
+		refresh();
+	}
+
+	static const char gamover[] = "Game is over!";
+	static const char cpu_won[] = "CPU WON!";
+	static const char player_won[] = "PLAYER WON!";
+	static const char draw[] = "DRAW!";
+	WINDOW *win = ui->end_game_banner;
+
+	wattron( win, COLOR_PAIR( COLOR_INDEX_GAMOVER ) );
+	wbkgd( win, COLOR_PAIR( COLOR_INDEX_GAMOVER ) );
+	box( win, 0, 0 );
+	wmove( win, 0, ( end_game_banner_width - sizeof( gamover ) ) / 2 - 1 );
+	waddch( win, ACS_RTEE );
+	wprintw( win, "%s", gamover );
+	waddch( win, ACS_LTEE );
 
 	switch( winner )
 	{
 		case CELL_CPU:
-			printw( /*BG_BRIGHT_RED*/ "CPU WON!" /*RESET_COLOR*/ );
+			wattron( win, A_STANDOUT );
+			print_middle_window( win, 1, cpu_won, sizeof( cpu_won ), COLOR_INDEX_CPU_WON );
+			wattroff( win, A_STANDOUT );
 			break;
 
 		case CELL_USER:
-			printw( /*BRIGHT_RED */"PLAYER WON!"/* RESET_COLOR*/ );
+			wattron( win, A_STANDOUT );
+			print_middle_window( win, 1, player_won, sizeof( player_won ), COLOR_INDEX_PLAYER_WON );
+			wattroff( win, A_STANDOUT );
 			break;
 
 		case CELL_INVALID:
 		default:
-			printw( /*BRIGHT_WHITE*/ "DRAW!" /*RESET_COLOR*/ );
+			print_middle_window( win, 1, draw, sizeof( draw ), COLOR_INDEX_GAMOVER );
 			break;
 	}
 
-	refresh();
+	wattroff( win, COLOR_PAIR( COLOR_INDEX_GAMOVER ) );
+	wrefresh( win );
 }
 
 static void print_legend( ui_t *in_ui )
@@ -143,7 +192,7 @@ static void print_legend( ui_t *in_ui )
 }
 
 static const char *select_cell_status = "Input cell index: ";
-static const char *play_again_status = "Play again [y/n]? "; 
+static const char *play_again_status = "Play again [y/n]? ";
 
 static void print_status( ui_ncurses_t *ui )
 {
@@ -177,12 +226,20 @@ static void resize_windows( ui_ncurses_t *ui )
 	box( ui->legend, 0, 0 );
 	ui->base.vtable->print_legend( &ui->base );
 
-	//ui->base.vtable->print_field( ui->base );
 	wrefresh( ui->field );
 
 	ui->error_mode = false;
-	//wrefresh( ui->prompt );
 	print_status( ui );
+
+	if( ui->end_game_banner )
+	{
+		// print banner
+		mvwin( ui->end_game_banner,
+					 ( maxy - end_game_banner_height ) / 2,
+					 ( maxx - end_game_banner_width ) / 2 );
+
+		wrefresh( ui->end_game_banner );
+	}
 
 	refresh();
 }
@@ -199,7 +256,7 @@ static int read_cell_index( ui_t *in_ui )
 	do
 	{
 		s = getch();
-		
+
 		if( KEY_RESIZE == s )
 		{
 			resize_windows( ui );
@@ -224,13 +281,23 @@ static char read_play_again( ui_t *in_ui )
 	do
 	{
 		s = getch();
-			
+
 		if( KEY_RESIZE == s )
 		{
 			resize_windows( ui );
 		}
 
 	} while( 'y' != s && 'n' != s );
+
+	if( ui->end_game_banner )
+	{
+		wbkgd( ui->end_game_banner, COLOR_PAIR( 0 ) );
+		wclear( ui->end_game_banner );
+		wrefresh( ui->end_game_banner );
+		delwin( ui->end_game_banner );
+		ui->end_game_banner = NULL;
+		refresh();
+	}
 
 	return s;
 }
@@ -273,6 +340,9 @@ static void init( ui_t *in_ui )
 		init_pair( COLOR_INDEX_EMPHASIZE, COLOR_WHITE, COLOR_BLACK );
 		init_pair( COLOR_INDEX_ERROR, COLOR_WHITE, COLOR_RED );
 		init_pair( COLOR_INDEX_ERROR_BORDER, COLOR_RED, COLOR_BLACK );
+		init_pair( COLOR_INDEX_GAMOVER, COLOR_WHITE, COLOR_BLUE );
+		init_pair( COLOR_INDEX_PLAYER_WON, COLOR_GREEN, COLOR_BLUE );
+		init_pair( COLOR_INDEX_CPU_WON, COLOR_RED, COLOR_BLUE );
 	}
 
 	int maxx, maxy;
@@ -315,4 +385,3 @@ ui_ncurses_t ui_ncurses = { .base = { .vtable = &ui_vtable_ncurses },
                             .prompt = NULL,
                             .error_mode = false,
                             .status = NULL };
-
