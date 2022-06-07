@@ -3,6 +3,7 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #include "include/color.h"
 #include "include/field.h"
@@ -169,7 +170,7 @@ int main( int argc, char** argv )
 	ui = &ui_old;
 
 	int c, opt_ind;
-	while( -1 != ( c = getopt_long( argc, argv, "hd:", longopts, &opt_ind ) ) )
+	while( -1 != ( c = getopt_long( argc, argv, "hd:i:", longopts, &opt_ind ) ) )
 	{
 		switch( c )
 		{
@@ -187,6 +188,18 @@ int main( int argc, char** argv )
 
 			case OPTION_UI_NCURSES:
 				ui = &ui_ncurses;
+				break;
+
+			case 'i':
+				if( 0 == strcmp( UI_NAME_NCURSES, optarg ) )
+				{
+					ui = &ui_ncurses;
+				}
+				else
+				{
+					ui = &ui_old;
+				}
+
 				break;
 
 			case 0:
